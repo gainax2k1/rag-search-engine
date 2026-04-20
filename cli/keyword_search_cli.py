@@ -1,4 +1,5 @@
 import argparse
+from marshal import load
 
 from lib.keyword_search import InvertedIndex
 
@@ -19,7 +20,10 @@ def main() -> None:
             query_name = args.query.lower()
             print("Searching for:", query_name)
             #print("Cleaned query:", clean_text(query_name))
-
+            idx = InvertedIndex()
+            idx.load()
+            results = idx.search(query_name)
+            show_results(results, idx)
           
         case "build":
             print("Building index...")
@@ -37,11 +41,21 @@ def build_command():
     idx.build()
     idx.save()
     print("Index built and saved successfully.")
+    
+    """
+    # removed for CH2L2
     docs = idx.get_documents("merida")
     print(f"First document for token 'merida' = {docs}")
-    # ... print the verification message
-
-
+    """
+def show_results(results, idx):
+    if not results:
+        print("No results found.")
+    else:
+        print("Search results:")
+    
+        for doc_id in results:
+                print(f"Document ID: {doc_id}, Title: {idx.docmap[doc_id]['title']}") 
+    
 
 if __name__ == "__main__":
     main()

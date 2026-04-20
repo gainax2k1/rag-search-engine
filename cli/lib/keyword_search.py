@@ -1,3 +1,4 @@
+from operator import add, index
 import pickle, os, json, string
 
 from nltk.stem import PorterStemmer
@@ -9,15 +10,16 @@ stemmer = PorterStemmer()
 INDEX_PATH = "cache/index.pkl"
 DOCMAP_PATH = "cache/docmap.pkl"
 CACHE_PATH = os.path.dirname(INDEX_PATH)
+MAX_RETURNS = 5
 
 
 
 class InvertedIndex:
     def __init__(self):
     # map string to set of integers (doc ids)
-        self.index = {}
+        self.index: dict[str, set[int]] = {}
     # map doc id to document text
-        self.docmap = {} 
+        self.docmap: dict[int, dict] = {} 
 
     def __add_document(self, doc_id, text):
 
@@ -30,16 +32,33 @@ class InvertedIndex:
             self.index[word].add(doc_id)
 
     def search(self, query):
-        words = query.split()
-
+        words = tokenize_text(query)
+        
+        """
+        
         if not words:
             return set()
-        
+            
         result = self.index.get(words[0], set())
+
         for word in words[1:]:
-            result = result.intersection(self.index.get(word, set()))
-        
-        return result
+            # if any token matches
+            result = result.union(self.index.get(word, set()))
+            # if all tokens must match
+            # re#sult = result.intersection(self.index.get(word, set()))
+        """
+
+        results = []
+        seen = set()
+        for word in words:
+            for doc_id in sorted(self.index.get(word, [])):
+                if doc_id not in seen:
+                    seen.add(doc_id)
+                    results.append(doc_id)
+                    if len(results) == MAX_RETURNS:
+                        return results
+        return results
+
     
 
     def get_documents(self, term):
@@ -57,14 +76,22 @@ class InvertedIndex:
             self.__add_document(doc_id, text)
             self.docmap[doc_id] = m
         
-        
-        
     def save(self): 
         os.makedirs(CACHE_PATH, exist_ok=True)
         with open(INDEX_PATH, 'wb') as f:
             pickle.dump(self.index, f)      
         with open(DOCMAP_PATH, 'wb') as f:
-            pickle.dump(self.docmap, f)   
+            pickle.dump(self.docmap, f)  
+
+    def load(self):
+
+        if not os.path.isfile(INDEX_PATH) or not os.path.isfile(DOCMAP_PATH):
+            raise FileNotFoundError("Index or document map file not found")
+
+        with open(INDEX_PATH, 'rb') as f:
+            self.index = pickle.load(f)
+        with open(DOCMAP_PATH, 'rb') as f:
+            self.docmap = pickle.load(f)     
 
 
 def tokenize_text(text: str) -> list[str]:       
