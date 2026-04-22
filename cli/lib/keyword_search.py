@@ -9,6 +9,7 @@ stemmer = PorterStemmer()
 
 INDEX_PATH = "cache/index.pkl"
 DOCMAP_PATH = "cache/docmap.pkl"
+TERM_FREQ_PATH = "cache/term_frequencies.pkl"
 CACHE_PATH = os.path.dirname(INDEX_PATH)
 MAX_RETURNS = 5
 
@@ -20,16 +21,23 @@ class InvertedIndex:
         self.index: dict[str, set[int]] = {}
     # map doc id to document text
         self.docmap: dict[int, dict] = {} 
+    # map doc id to counter object
+        self.term_frequencies: dict[int, dict[str, int]] = {}
 
     def __add_document(self, doc_id, text):
 
         #Tokenize the input text, then add each token to the index with the document ID.
-
+        """update the term frequencies for each token in the document.
+          For each token, increment its count in the Counter for that document ID."""
         tokenized_text = tokenize_text(text)
         for word in tokenized_text:
             if word not in self.index:
                 self.index[word] = set()
             self.index[word].add(doc_id)
+            # Update term frequency for the document
+            if doc_id not in self.term_frequencies:
+                self.term_frequencies[doc_id] = {}
+            self.term_frequencies[doc_id][word] = self.term_frequencies[doc_id].get(word, 0) + 1
 
     def search(self, query):
         words = tokenize_text(query)
@@ -82,16 +90,29 @@ class InvertedIndex:
             pickle.dump(self.index, f)      
         with open(DOCMAP_PATH, 'wb') as f:
             pickle.dump(self.docmap, f)  
+        with open(TERM_FREQ_PATH, 'wb') as f:
+            pickle.dump(self.term_frequencies, f)
 
     def load(self):
-
-        if not os.path.isfile(INDEX_PATH) or not os.path.isfile(DOCMAP_PATH):
-            raise FileNotFoundError("Index or document map file not found")
+        if not os.path.isfile(INDEX_PATH) or not os.path.isfile(DOCMAP_PATH) or not os.path.isfile(TERM_FREQ_PATH):
+            raise FileNotFoundError("Index, document map, or term frequency file not found")
 
         with open(INDEX_PATH, 'rb') as f:
             self.index = pickle.load(f)
         with open(DOCMAP_PATH, 'rb') as f:
-            self.docmap = pickle.load(f)     
+            self.docmap = pickle.load(f)
+        with open(TERM_FREQ_PATH, 'rb') as f:
+            self.term_frequencies = pickle.load(f)     
+
+    def get_tf(self, doc_id, term):
+        token_term = tokenize_text(term)
+        if not token_term:
+            return 0
+        if len(token_term) > 1:
+            raise ValueError("Term should be a single token after tokenization")
+        
+        tf = self.term_frequencies.get(doc_id, {}).get(token_term[0], 0)
+        return tf
 
 
 def tokenize_text(text: str) -> list[str]:       

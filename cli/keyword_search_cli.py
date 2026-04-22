@@ -11,6 +11,10 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     build_parser = subparsers.add_parser("build", help="Build the search index")
 
+    tf_parser = subparsers.add_parser("tf", help="Get term frequency for a document and term")
+    tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tf_parser.add_argument("term", type=str, help="Term to get frequency for")
+
     search_parser.add_argument("query", type=str, help="Search query")
 
     args = parser.parse_args()
@@ -30,7 +34,10 @@ def main() -> None:
             #build_index_and_docmap()
             build_command()
 
-
+        case "tf":
+            print("Getting term frequency...")
+            tf_command(args.doc_id, args.term)
+            
 
         case _:
             parser.print_help()
@@ -56,6 +63,12 @@ def show_results(results, idx):
         for doc_id in results:
                 print(f"Document ID: {doc_id}, Title: {idx.docmap[doc_id]['title']}") 
     
+
+def tf_command(doc_id, term):
+    idx = InvertedIndex()
+    idx.load()
+    tf = idx.get_tf(doc_id, term)
+    print(f"Term frequency of '{term}' in document ID {doc_id}: {tf}")
 
 if __name__ == "__main__":
     main()
