@@ -5,9 +5,14 @@ build/
 dist/
 wheels/
 *.egg-info
+*.pkl
+*.pyc
+.env
 
 # Virtual environments
 .venv
 
 # Data
-/data/
+data/
+cache/
+none

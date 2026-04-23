@@ -1,7 +1,7 @@
 import argparse
-from marshal import load
 
-from lib.keyword_search import BM25_K1, InvertedIndex
+from lib.inverted_index import InvertedIndex
+from lib.search_utils import BM25_B, BM25_K1
 
 
 def main() -> None:
@@ -9,7 +9,8 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
-    build_parser = subparsers.add_parser("build", help="Build the search index")
+    
+    _ = subparsers.add_parser("build", help="Build the search index")
 
     tf_parser = subparsers.add_parser("tf", help="Get term frequency for a document and term")
     tf_parser.add_argument("doc_id", type=int, help="Document ID")

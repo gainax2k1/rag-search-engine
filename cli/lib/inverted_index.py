@@ -1,21 +1,8 @@
-from operator import add, index
 import pickle, os, string, math
 
-from nltk.stem import PorterStemmer
-from .search_utils import load_movies, load_stopwords
+from .search_utils import load_movies, tokenize_text, BM25_K1, BM25_B, CACHE_DIR
 
-stemmer = PorterStemmer()
-
-
-INDEX_PATH = "cache/index.pkl"
-DOCMAP_PATH = "cache/docmap.pkl"
-TERM_FREQ_PATH = "cache/term_frequencies.pkl"
-CACHE_PATH = os.path.dirname(INDEX_PATH)
 MAX_RETURNS = 5
-BM25_K1 = 1.5 
-BM25_B = 0.75
-
-
 
 class InvertedIndex:
     def __init__(self):
@@ -25,6 +12,13 @@ class InvertedIndex:
         self.docmap: dict[int, dict] = {} 
     # map doc id to counter object
         self.term_frequencies: dict[int, dict[str, int]] = {}
+    # map doc id to document length
+        self.doc_lengths: dict[int, int] = {}
+
+        self.index_path = os.path.join(CACHE_DIR, "index.pkl")
+        self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
+        self.term_freq_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
+        self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
 
     def __add_document(self, doc_id, text):
 
@@ -87,23 +81,23 @@ class InvertedIndex:
             self.docmap[doc_id] = m
         
     def save(self): 
-        os.makedirs(CACHE_PATH, exist_ok=True)
-        with open(INDEX_PATH, 'wb') as f:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(self.index_path, 'wb') as f:
             pickle.dump(self.index, f)      
-        with open(DOCMAP_PATH, 'wb') as f:
+        with open(self.docmap_path, 'wb') as f:
             pickle.dump(self.docmap, f)  
-        with open(TERM_FREQ_PATH, 'wb') as f:
+        with open(self.term_freq_path, 'wb') as f:
             pickle.dump(self.term_frequencies, f)
 
     def load(self):
-        if not os.path.isfile(INDEX_PATH) or not os.path.isfile(DOCMAP_PATH) or not os.path.isfile(TERM_FREQ_PATH):
+        if not os.path.isfile(self.index_path) or not os.path.isfile(self.docmap_path) or not os.path.isfile(self.term_freq_path):
             raise FileNotFoundError("Index, document map, or term frequency file not found")
 
-        with open(INDEX_PATH, 'rb') as f:
+        with open(self.index_path, 'rb') as f:
             self.index = pickle.load(f)
-        with open(DOCMAP_PATH, 'rb') as f:
+        with open(self.docmap_path, 'rb') as f:
             self.docmap = pickle.load(f)
-        with open(TERM_FREQ_PATH, 'rb') as f:
+        with open(self.term_freq_path, 'rb') as f:
             self.term_frequencies = pickle.load(f)     
 
     def get_tf(self, doc_id, term):
@@ -164,17 +158,4 @@ class InvertedIndex:
         return bm25_tf
 
 
-
-def tokenize_text(text: str) -> list[str]:       
-    stopwords = load_stopwords()
-    tokens_list = preprocess_text(text).split()
-    tokens_list = [stemmer.stem(token) for token in tokens_list if token not in stopwords]             
-    return tokens_list
-
-        
-def preprocess_text(text: str) -> str:
-    # remove punctuation, convert to lowercase, etc.
-    text = text.strip()
-    translator = str.maketrans("", "", string.punctuation)
-    return text.translate(translator).lower()
 
