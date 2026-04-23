@@ -1,5 +1,5 @@
 from operator import add, index
-import pickle, os, json, string
+import pickle, os, string, math
 
 from nltk.stem import PorterStemmer
 from .search_utils import load_movies, load_stopwords
@@ -12,6 +12,8 @@ DOCMAP_PATH = "cache/docmap.pkl"
 TERM_FREQ_PATH = "cache/term_frequencies.pkl"
 CACHE_PATH = os.path.dirname(INDEX_PATH)
 MAX_RETURNS = 5
+BM25_K1 = 1.5 
+BM25_B = 0.75
 
 
 
@@ -113,6 +115,54 @@ class InvertedIndex:
         
         tf = self.term_frequencies.get(doc_id, {}).get(token_term[0], 0)
         return tf
+    
+    def get_idf(self, term: str):
+        token_term = tokenize_text(term)
+        if not token_term:
+            return 0
+        if len(token_term) > 1:
+            raise ValueError("Term should be a single token after tokenization")
+        
+        doc_freq = len(self.index[token_term[0]])
+        print(f"Document frequency for term '{term}' (tokenized as '{token_term[0]}'): {doc_freq}")
+        if doc_freq == 0:
+            return 0
+        
+        total_docs = len(self.docmap)
+        print(f"Total number of documents: {total_docs}")
+
+        idf = math.log((total_docs + 1) / (doc_freq +1))  # Adding 1 to avoid division by zero and log(0)
+        print(f"Inverse document frequency for term '{term}' (tokenized as '{token_term[0]}'): {idf}")
+        return idf
+    
+    def get_bm25_idf(self, term: str) -> float:
+        token_term = tokenize_text(term)
+        if not token_term:
+            return 0
+        if len(token_term) > 1:
+            raise ValueError("Term should be a single token after tokenization")
+        
+        doc_freq = len(self.index[token_term[0]])
+        total_docs = len(self.docmap)
+
+        bm25_idf = math.log((total_docs - doc_freq + 0.5) / (doc_freq + 0.5) + 1)
+        return bm25_idf
+    
+    def get_bm25_tf(self, doc_id, term, k1=BM25_K1) -> float:
+        token_term = tokenize_text(term)
+        if not token_term:
+            return 0
+        if len(token_term) > 1:
+            raise ValueError("Term should be a single token after tokenization")
+        
+        tf = self.get_tf(doc_id, term)
+        doc_length = sum(self.term_frequencies.get(doc_id, {}).values())
+        avg_doc_length = sum(sum(tf_dict.values()) for tf_dict in self.term_frequencies.values()) / len(self.term_frequencies)
+        #doc length norm below
+        # bm25_tf = (tf * (k1 + 1)) / (tf + k1 * (1 - 0.75 + 0.75 * (doc_length / avg_doc_length)))
+        bm25_tf = (tf * (k1 + 1)) / (tf + k1)        
+        return bm25_tf
+
 
 
 def tokenize_text(text: str) -> list[str]:       
@@ -127,3 +177,4 @@ def preprocess_text(text: str) -> str:
     text = text.strip()
     translator = str.maketrans("", "", string.punctuation)
     return text.translate(translator).lower()
+
