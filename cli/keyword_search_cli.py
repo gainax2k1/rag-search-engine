@@ -1,6 +1,6 @@
 import argparse
 
-from lib.inverted_index import InvertedIndex
+from lib.inverted_index import InvertedIndex, MAX_RETURNS
 from lib.search_utils import BM25_B, BM25_K1
 
 
@@ -29,11 +29,14 @@ def main() -> None:
     bm25_tf_parser = subparsers.add_parser("bm25tf", help="Get BM25 TF score for a document and term")
     bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
     bm25_tf_parser.add_argument("term", type=str, help="Term to get frequency for")
-    bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="BM25 k1 parameter (default: 1.5)")
+    bm25_tf_parser.add_argument("--k1", type=float, nargs='?', default=BM25_K1, help="BM25 k1 parameter (default: {default})".format(default=BM25_K1))
+    bm25_tf_parser.add_argument("--b", type=float, nargs='?', default=BM25_B, help="BM25 b parameter (default: {default})".format(default=BM25_B))
 
+    bm25search_parser = subparsers.add_parser("bm25search", help="Search movies using full BM25 scoring")
+    bm25search_parser.add_argument("query", type=str, help="Search query")
+    bm25search_parser.add_argument("--limit", type=int, nargs='?', default=MAX_RETURNS, help="Maximum number of results to return, default: {default})".format(default=MAX_RETURNS))
 
     search_parser.add_argument("query", type=str, help="Search query")
-
     args = parser.parse_args()
 
     match args.command:
@@ -70,6 +73,10 @@ def main() -> None:
         case "bm25tf":
             print("Getting BM25 TF score...")
             bm25_tf_command(args.doc_id, args.term, args.k1)
+
+        case "bm25search":
+            print("Performing BM25 search...")
+            bm25search_command(args.query, args.limit)
     
         case _:
             parser.print_help()
@@ -94,7 +101,17 @@ def show_results(results, idx):
     
         for doc_id in results:
                 print(f"Document ID: {doc_id}, Title: {idx.docmap[doc_id]['title']}") 
+
+def show_bm25_results(results, idx):
+    if not results:
+        print("No results found.")
+    else:
+        print("BM25 Search results:")
     
+        leading_number = 1
+        for doc_id, score in results:
+                print(f"{leading_number}. ({doc_id}) {idx.docmap[doc_id]['title']} - Score: {score:.2f}")
+                leading_number += 1
 
 def tf_command(doc_id, term):
     idx = InvertedIndex()
@@ -127,6 +144,12 @@ def bm25_tf_command(doc_id, term, k1):
     idx.load()
     bm25_tf = idx.get_bm25_tf(doc_id, term, k1)
     print(f"BM25 TF score of '{term}' in document ID {doc_id}: {bm25_tf:.2f}")
+
+def bm25search_command(query, limit):
+    idx = InvertedIndex()
+    idx.load()
+    results = idx.bm25_search(query, limit)
+    show_bm25_results(results, idx)
 
 if __name__ == "__main__":
     main()
