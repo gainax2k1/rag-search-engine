@@ -1,13 +1,14 @@
 import json, os, string
-
+import numpy as np
 from nltk.stem import PorterStemmer
 
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+CACHE_DIR = os.path.join(PROJECT_ROOT, "cache")
 
 MOVIE_DATA_PATH = os.path.join(PROJECT_ROOT, "data", "movies.json")
 STOPWORDS_PATH = os.path.join(PROJECT_ROOT, "data", "stopwords.txt")
-CACHE_DIR = os.path.join(PROJECT_ROOT, "cache")
+MOVIE_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "movie_embeddings.npy")
 
 BM25_K1 = 1.5 
 BM25_B = 0.75
@@ -37,3 +38,13 @@ def preprocess_text(text: str) -> str:
     text = text.strip()
     translator = str.maketrans("", "", string.punctuation)
     return text.translate(translator).lower()
+
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
