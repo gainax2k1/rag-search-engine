@@ -6,9 +6,9 @@ import numpy as np
 SEARCH_LIMIT = 5
 
 class SemanticSearch:
-    def __init__(self):
+    def __init__(self, model_name="all-MiniLM-L6-v2"):
         # Load the model (downloads automatically the first time)
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.model = SentenceTransformer(model_name)
 
         # numpy 2d array of vectors
         """self.embeddings = np.array([

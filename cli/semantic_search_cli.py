@@ -4,7 +4,8 @@ import argparse, re
 
 from torch import embedding
 from lib.semantic_search import SemanticSearch, verify_embeddings, embed_query_text
-from lib.search_utils import load_movies
+from lib.search_utils import load_movies, semantic_chunk
+from lib.chunked_semantic_search import ChunkedSemanticSearch
 
 
 def main():
@@ -36,7 +37,8 @@ def main():
     sem_chunk_parser.add_argument("--max-chunk-size", type=int, nargs='?', default=4, help="Max chunk size, defaults to 4")
     sem_chunk_parser.add_argument("--overlap", type=int , nargs='?', default=0, help="ammount of overlap in chunk")
 
-
+    embed_chunks_parser = subparsers.add_parser("embed_chunks", help="Embed semantic chunks")
+    
     args = parser.parse_args()
 
     match args.command:
@@ -69,6 +71,10 @@ def main():
             print("Semantically chunking...")
             sem_chunks = semantic_chunk_command(args.text, max_chunk_size=args.max_chunk_size, overlap=args.overlap)
             print_chunks(sem_chunks)
+
+        case "embed_chunks":
+            print("Embedding chunks...")
+            embed_chunks_command()
 
         case _:
             parser.print_help()
@@ -134,48 +140,20 @@ def chunk_command(text, chunk_size=200, overlap=0):
     print_chunks(chunks)
 
 def semantic_chunk_command(text, max_chunk_size, overlap):
-    """    
-    Split the input into individual sentences by using a regular expression. 
-    The re.split function and this nasty regex should help: r"(?<=[.!?])\s+"
-    """
+
     text_length = len(text)
     print(f"Semantically chunking {text_length} characters")
-
-    split_text = re.split(r"(?<=[.!?])\s+",text)
-    tot_num_sentences = len(split_text)
-
-
-    chunks = []
-
-    start_pos = 0
-    end_pos = max_chunk_size
-    remaining = tot_num_sentences
-
-    while remaining > 0:
-        if start_pos == 0:
-            chunk = " ".join(split_text[start_pos:end_pos])
-        else:
-            chunk = " ".join(split_text[(start_pos-overlap):end_pos])
-        used = end_pos - start_pos
-        remaining -= used
-
-        start_pos = end_pos
-        end_pos += max_chunk_size - overlap
-        if end_pos > tot_num_sentences:
-            end_pos = tot_num_sentences
-        
-        chunks.append(chunk) 
-
-    return chunks
-                          
-
-    """Each chunk should contain up to max_chunk_size sentences.
-Support overlap by number of sentences.
-Return a list of chunk strings."""
+    return semantic_chunk(text, max_chunk_size, overlap)                          
 
 def print_chunks(chunks):
     for i in range(len(chunks)):
         print(f"{i + 1}. {chunks[i]}")
+
+def embed_chunks_command():
+    movies = load_movies()
+    chunked_sem_search = ChunkedSemanticSearch()
+    embeddings = chunked_sem_search.load_or_create_chunk_embeddings(movies)
+    print(f"Generated {len(embeddings)} chunked embeddings")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-import json, os, string
+import json, os, string, re
 import numpy as np
 from nltk.stem import PorterStemmer
 
@@ -48,3 +48,34 @@ def cosine_similarity(vec1, vec2):
         return 0.0
 
     return dot_product / (norm1 * norm2)
+
+def semantic_chunk(text, max_chunk_size, overlap):
+    """    
+    Split the input into individual sentences by using a regular expression. 
+    The re.split function and this nasty regex should help: r"(?<=[.!?])\s+"
+    """
+    split_text = re.split(r"(?<=[.!?])\s+",text)
+    tot_num_sentences = len(split_text)
+
+    chunks = []
+
+    start_pos = 0
+    end_pos = max_chunk_size
+    remaining = tot_num_sentences
+
+    while remaining > 0:
+        if start_pos == 0:
+            chunk = " ".join(split_text[start_pos:end_pos])
+        else:
+            chunk = " ".join(split_text[(start_pos-overlap):end_pos])
+        used = end_pos - start_pos
+        remaining -= used
+
+        start_pos = end_pos
+        end_pos += max_chunk_size - overlap
+        if end_pos > tot_num_sentences:
+            end_pos = tot_num_sentences
+        
+        chunks.append(chunk) 
+
+    return chunks
