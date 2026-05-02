@@ -12,7 +12,7 @@ MOVIE_EMBEDDINGS_PATH = os.path.join(CACHE_DIR, "movie_embeddings.npy")
 
 BM25_K1 = 1.5 
 BM25_B = 0.75
-
+SCORE_PRECISION = 4
 
 
 def load_movies():
@@ -50,7 +50,7 @@ def cosine_similarity(vec1, vec2):
     return dot_product / (norm1 * norm2)
 
 def semantic_chunk(text, max_chunk_size, overlap):
-    """    
+    r"""    
     Split the input into individual sentences by using a regular expression. 
     The re.split function and this nasty regex should help: r"(?<=[.!?])\s+"
     """
