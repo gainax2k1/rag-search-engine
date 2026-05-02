@@ -9,6 +9,7 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
+    search_parser.add_argument("query", type=str, help="Search query")
     
     _ = subparsers.add_parser("build", help="Build the search index")
 
@@ -36,7 +37,6 @@ def main() -> None:
     bm25search_parser.add_argument("query", type=str, help="Search query")
     bm25search_parser.add_argument("--limit", type=int, nargs='?', default=MAX_RETURNS, help="Maximum number of results to return, default: {default})".format(default=MAX_RETURNS))
 
-    search_parser.add_argument("query", type=str, help="Search query")
     args = parser.parse_args()
 
     match args.command:

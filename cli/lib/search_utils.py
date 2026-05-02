@@ -54,8 +54,16 @@ def semantic_chunk(text, max_chunk_size, overlap):
     Split the input into individual sentences by using a regular expression. 
     The re.split function and this nasty regex should help: r"(?<=[.!?])\s+"
     """
+    text = text.strip() #handles " ", tabs, newlines, etc
+    if len(text) == 0:
+        return []
+    
     split_text = re.split(r"(?<=[.!?])\s+",text)
     tot_num_sentences = len(split_text)
+
+    if tot_num_sentences == 1 and not split_text[0].endswith(('.', "?", '!')):
+        return split_text
+
 
     chunks = []
 
@@ -76,6 +84,9 @@ def semantic_chunk(text, max_chunk_size, overlap):
         if end_pos > tot_num_sentences:
             end_pos = tot_num_sentences
         
+        chunk = chunk.strip() 
+        if len(chunk) == 0:
+            continue
         chunks.append(chunk) 
 
     return chunks
