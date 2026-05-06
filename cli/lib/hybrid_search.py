@@ -68,8 +68,49 @@ class HybridSearch:
 
         return sorted_scores_dict[:limit]
 
-    def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+    def rrf_search(self, query, k, limit):
+        # raise NotImplementedError("RRF hybrid search is not implemented yet.")
+        bm_results= self._bm25_search(query, limit * 500)
+        semantic_results =  self.semantic_search.search_chunks(query, limit*500)
+        scores_dict = {} # doc_id mapped to dict with bm25_rank, sem_rank, rrf_score, title, doc
+
+        for rank, (doc_id, score) in enumerate(bm_results, start=1): #set bm25_rank for docs in bm_results, create entry if not in sem_results
+            doc = self.idx.docmap[doc_id]
+            entry = {
+                "bm25_rank": rank,
+                "sem_rank": None,
+                "rrf": 0,
+                "title": doc["title"],
+                "doc": doc["description"]
+            }
+            scores_dict[doc_id] = entry
+
+        for rank, result in enumerate(semantic_results, start=1): #set sem_rank for docs in semantic results, create entry if not in bm_results
+            doc_id = result["id"]
+            if doc_id not in scores_dict:
+                entry = {
+                    "bm25_rank": None,
+                    "sem_rank": rank,
+                    "rrf": 0,
+                    "title": result["title"],
+                    "doc": result["document"],
+                }
+                scores_dict[doc_id] = entry
+            else:
+                scores_dict[doc_id]["sem_rank"] = rank
+
+        for entry in scores_dict.values(): # calculate RRF score for each entry based on bm25_rank and sem_rank
+            bm25_rank = entry["bm25_rank"]
+            sem_rank = entry["sem_rank"]
+
+            bm25_score = rrf_score(bm25_rank, k) if bm25_rank is not None else 0
+            sem_score = rrf_score(sem_rank, k) if sem_rank is not None else 0
+            entry["rrf"] = bm25_score + sem_score 
+
+        sorted_scores_dict = sorted(scores_dict.values(), key=lambda score:score["rrf"], reverse=True)
+
+        return sorted_scores_dict[:limit] # return top n results based on RRF score, where n = limit
+
     
 
 def normalize_score(scores: list[float]) -> list[float]:
@@ -94,3 +135,6 @@ def normalize_score(scores: list[float]) -> list[float]:
 
 def hybrid_score(bm25_score, semantic_score, alpha=0.5):
     return alpha * bm25_score + (1 - alpha) * semantic_score
+
+def rrf_score(rank, k=60):
+    return 1 / (k + rank)
