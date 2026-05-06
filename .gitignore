@@ -7,7 +7,7 @@ wheels/
 *.egg-info
 *.pkl
 *.pyc
-.env
+*.env
 
 # Virtual environments
 .venv

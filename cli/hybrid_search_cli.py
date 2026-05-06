@@ -2,6 +2,7 @@ import argparse
 
 from lib.search_utils import DEFAULT_ALPHA, DEFAULT_WSEARCH_LIMIT, K_WEIGHT, load_movies
 from lib.hybrid_search import normalize_score, HybridSearch
+from lib.query_enhancement import enhance_query
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -20,6 +21,7 @@ def main() -> None:
     rrf_search_parser.add_argument("query", type=str, help="Search query")
     rrf_search_parser.add_argument("--k", nargs="?", type=int, default=K_WEIGHT, help="K value for RRF search")
     rrf_search_parser.add_argument("--limit", nargs="?", type=int, default=DEFAULT_WSEARCH_LIMIT, help="Limit results of RRF search")
+    rrf_search_parser.add_argument("--enhance",type=str, choices=["spell", "rewrite", "expand"],help="Query enhancement method", default=None)
 
 
     args = parser.parse_args()
@@ -35,7 +37,7 @@ def main() -> None:
 
         case "rrf-search":
             print("RRF score search...")
-            rrf_search_command(args.query, k=args.k, limit=args.limit)
+            rrf_search_command(args.query, k=args.k, limit=args.limit, enhance=args.enhance)
 
         case _:
             parser.print_help()
@@ -58,11 +60,23 @@ def weighted_search_command(query, alpha, limit):
         print(f"BM25: {result["bm25"]:.4f}, Semantic: {result["sem"]:.4f}")
         print(f"{result["doc"][:100]}\n")
 
-def rrf_search_command(query, k, limit):
+def rrf_search_command(query, k, limit, enhance):
     documents = load_movies()
     hyb_search = HybridSearch(documents)
-    results= hyb_search.rrf_search(query, k, limit)
 
+    if enhance is None:
+        results= hyb_search.rrf_search(query, k, limit)
+    elif enhance in ("spell", "rewrite"):
+        enhanced_query = enhance_query(query, method=enhance)
+        print(f"Enhanced query ({enhance}): '{query}' -> '{enhanced_query}'\n")
+        results = hyb_search.rrf_search(enhanced_query, k, limit)
+    elif enhance == "expand":
+        enhanced_query = query + " " + enhance_query(query, method=enhance)
+        print(f"Enhanced query ({enhance}): '{query}' -> '{enhanced_query}'\n")
+        results = hyb_search.rrf_search(enhanced_query, k, limit)
+    else:
+        raise ValueError(f"Invalid enhancement method: {enhance}")  
+    
     for i, result in enumerate(results):
         print(f"{i+1}. {result["title"]}")
         print(f"RRF Score: {result["rrf"]:.4f}")
