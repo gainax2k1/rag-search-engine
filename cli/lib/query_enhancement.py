@@ -1,4 +1,4 @@
-import os
+import os, json
 from dotenv import load_dotenv
 from google import genai
 
@@ -52,7 +52,66 @@ PROMPTS = {
 
             User query: "{query}"
             """,
+    "individual":"""Rate how well this movie matches the search query.
+
+            Query: "{query}"
+            Movie: {title} - {document}
+
+            Consider:
+            - Direct relevance to query
+            - User intent (what they're looking for)
+            - Content appropriateness
+
+            Rate 0-10 (10 = perfect match).
+            Output ONLY the number in your response, no other text or explanation.
+
+            Score:
+            """,
+    "batch":"""Rank the movies listed below by relevance to the following search query.
+
+            Query: "{query}"
+
+            Movies:
+            {doc_list_str}
+
+            Return ONLY the movie IDs in order of relevance (best match first). Return a valid JSON list, nothing else.
+
+            For example:
+            [75, 12, 34, 2, 1]
+
+            Ranking:
+            """,
 }
+
+def individual_rerank(query, title, doc):
+    prompt = PROMPTS["individual"].format(query=query, document=doc, title=title)
+    response = _client.models.generate_content(model=MODEL, contents=prompt)    
+    
+    cleaned = (response.text or "").strip()
+    try:
+        score = float(cleaned)
+        return score
+    except ValueError:
+        print(f"Warning: Could not parse score from model response: '{cleaned}'")
+        return 0.0
+
+def batch_rerank(query, doc_list):
+    
+    # use i as the ID
+    doc_list_str = "\n".join([f"{doc['id']}: {doc['title']} - {doc['doc'][:300]}" for doc in doc_list])
+         #truncate doc text to 300 chars to keep prompt size down, include doc id and title for context in reranking
+    
+    prompt = PROMPTS["batch"].format(query=query, doc_list_str=doc_list_str)
+    response = _client.models.generate_content(model=MODEL, contents=prompt)    
+    
+    cleaned = (response.text or "").strip()
+    try:
+        ranked_ids = json.loads(cleaned)
+        return ranked_ids
+    except json.JSONDecodeError:
+        print(f"Warning: Could not parse JSON from model response: '{cleaned}'")
+        return [doc['id'] for doc in doc_list] # return original order as fallback
+    
 
 
 def enhance_query(query: str, method    : str) -> str:
