@@ -1,9 +1,11 @@
 import os, json
 from dotenv import load_dotenv
 from google import genai
+from sentence_transformers import CrossEncoder
 
 MODEL = "gemma-4-26b-a4b-it" # works!
 # doesn't work even without 'latest' -> MODEL = "gemma-3-27b-it-latest"
+CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-TinyBERT-L2-v2" 
 
 load_dotenv()
 _api_key = os.environ.get("GEMINI_API_KEY")
@@ -83,6 +85,7 @@ PROMPTS = {
             """,
 }
 
+
 def individual_rerank(query, title, doc):
     prompt = PROMPTS["individual"].format(query=query, document=doc, title=title)
     response = _client.models.generate_content(model=MODEL, contents=prompt)    
@@ -95,8 +98,8 @@ def individual_rerank(query, title, doc):
         print(f"Warning: Could not parse score from model response: '{cleaned}'")
         return 0.0
 
+
 def batch_rerank(query, doc_list):
-    
     # use i as the ID
     doc_list_str = "\n".join([f"{doc['id']}: {doc['title']} - {doc['doc'][:300]}" for doc in doc_list])
          #truncate doc text to 300 chars to keep prompt size down, include doc id and title for context in reranking
@@ -113,6 +116,24 @@ def batch_rerank(query, doc_list):
         return [doc['id'] for doc in doc_list] # return original order as fallback
     
 
+def cross_encoder_rerank(query, doc_list):
+    model = CrossEncoder(CROSS_ENCODER_MODEL)
+
+    #pairs = [(query, doc['doc']) for doc in doc_list]
+    pairs = []
+    for doc in doc_list:
+        pairs.append([query, f"{doc.get('title', '')} - {doc.get('document', '')}"])
+        
+    scores = model.predict(pairs)
+
+    # add the scores to the doc_list entries
+    for doc, score in zip(doc_list, scores):
+        doc['cross_encoder_score'] = score
+
+    # sort the results by the new score in descending order.
+    reranked_docs = sorted(doc_list, key=lambda x: x['cross_encoder_score'], reverse=True)
+    return reranked_docs
+    
 
 def enhance_query(query: str, method    : str) -> str:
     prompt = PROMPTS[method].format(query=query)
