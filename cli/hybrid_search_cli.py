@@ -94,7 +94,6 @@ def rrf_search_command(query, k, limit, enhance, rerank_method):
         results = sorted(results, key=lambda x: x["individual_rerank"], reverse=True)[:limit//5] # return top "limit" results after reranking
 
     elif rerank_method == "batch":
-     
         for i, r in enumerate(results):
             r["id"] = i  # add an "id" field to each result based on its index in the results list, since batch_rerank expects an "id" for each doc to identify them in the reranking process   
 

@@ -128,7 +128,11 @@ class InvertedIndex:
         if len(token_term) > 1:
             raise ValueError("Term should be a single token after tokenization")
         
+        if token_term[0] not in self.index: # protect against terms that are not in the index at all, which would cause doc_freq to be 0 and lead to division by zero in the idf calculation
+            return 0
+        
         doc_freq = len(self.index[token_term[0]])
+
         total_docs = len(self.docmap)
 
         bm25_idf = math.log((total_docs - doc_freq + 0.5) / (doc_freq + 0.5) + 1)
