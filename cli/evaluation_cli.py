@@ -31,13 +31,21 @@ def main():
         hybrid_search_results = hybrid_search.rrf_search(query, k=60, limit=limit)  
 
         retrieved_titles = set(result["title"] for result in hybrid_search_results)
+
+
         relevant_titles = set(relevant_docs)
+
+        total_relevant = len(relevant_titles)   
 
         relevant_retrieved = retrieved_titles & relevant_titles
         precision = len(relevant_retrieved) / len(hybrid_search_results)
-
+        recall = len(relevant_retrieved) / total_relevant if total_relevant > 0 else 0
+        harmonic_mean = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0 # "F1" score
+        
         print(f"\n- Query: {query}")
         print(f"  - Precision@{limit}: {precision:.4f}")
+        print(f"  - Recall@{limit}: {recall:.4f}")
+        print(f"  - F1 Score: {harmonic_mean:.4f}")
         print(f"  - Retrieved: {", ".join(retrieved_titles)}")
         print(f"  - Relevant: {", ".join(relevant_titles)}")   
 

@@ -82,6 +82,8 @@ def rrf_search_command(query, k, limit, enhance, rerank_method):
     else:
         raise ValueError(f"Invalid enhancement method: {enhance}")  
     
+    print(f"DEBUG: RRF Search results: ", [result["title"] for result in results])
+    
     if rerank_method == "individual":
     # run results through a series of llm promps (1 per doc) asking the llm to provide a new score for each  document
         print(f"Re-ranking top {orig_limit} results using individual method...")
@@ -109,7 +111,11 @@ def rrf_search_command(query, k, limit, enhance, rerank_method):
         print(f"Reciprocal Rank Fusion Results for '{query}' (k={K_WEIGHT}):\n")
     
     if rerank_method == "cross_encoder":
+
         results = cross_encoder_rerank(query, results[:limit])[:orig_limit]
+
+        print("DEBUG: Retrieved titles: ", [result["title"] for result in results])
+
         print(f"Re-ranking top {orig_limit} results using cross_encoder method...")
         print(f"Reciprocal Rank Fusion Results for '{query}' (k={K_WEIGHT}):\n")    
 

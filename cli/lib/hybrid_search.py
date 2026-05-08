@@ -69,7 +69,7 @@ class HybridSearch:
         return sorted_scores_dict[:limit]
 
     def rrf_search(self, query, k, limit):
-        # raise NotImplementedError("RRF hybrid search is not implemented yet.")
+        
         bm_results= self._bm25_search(query, limit * 500)
         semantic_results =  self.semantic_search.search_chunks(query, limit*500)
         scores_dict = {} # doc_id mapped to dict with bm25_rank, sem_rank, rrf_score, title, doc

@@ -127,6 +127,7 @@ def verify_embeddings():
 def embed_query_text(query):
     sem_search = SemanticSearch()
     query_list = sem_search.generate_embeddings(query)
+    
 
     print(f"Query: {query}")
     print(f"First 3 dimensions: {query_list[:3]}")

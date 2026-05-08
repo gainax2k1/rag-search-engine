@@ -160,6 +160,10 @@ class InvertedIndex:
     
     def bm25_search(self, query, limit=MAX_RETURNS, k1=BM25_K1, b=BM25_B):
         words = tokenize_text(query)
+
+        print(f"DEBUG: Original query: {query}")
+        print(f"DEBUG: Tokenized query: {words}")
+        
         scores = {} # map doc_id to BM25 score
 
         for doc in self.docmap:
