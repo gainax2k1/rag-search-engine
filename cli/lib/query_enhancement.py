@@ -83,6 +83,25 @@ PROMPTS = {
 
             Ranking:
             """,
+    "evaluate":"""Rate how relevant each result is to this query on a 0-3 scale:
+
+            Query: "{query}"
+
+            Results:
+            {results}
+
+            Scale:
+            - 3: Highly relevant
+            - 2: Relevant
+            - 1: Marginally relevant
+            - 0: Not relevant
+
+            Do NOT give any numbers other than 0, 1, 2, or 3.
+
+            Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+            [2, 0, 3, 2, 0, 1]
+            """,
 }
 
 
@@ -141,6 +160,20 @@ def enhance_query(query: str, method    : str) -> str:
     
     cleaned = (response.text or "").strip()
     return cleaned if cleaned else query
+
+def evaluate_results(query: str, results: list[dict]) -> list[int]:
+    formatted_results = [f"{result['title']} - {result['doc'][:300]}" for result in results] # format results as "title - doc" and truncate doc to 300 chars to keep prompt size down
+    results_str = "\n".join(formatted_results)
+    prompt = PROMPTS["evaluate"].format(query=query, results=results_str)
+    response = _client.models.generate_content(model=MODEL, contents=prompt)    
+    
+    cleaned = (response.text or "").strip()
+    try:
+        scores = json.loads(cleaned)
+        return scores
+    except json.JSONDecodeError:
+        print(f"Warning: Could not parse JSON from model response: '{cleaned}'")
+        return [0] * len(results) # return all 0s as fallback
 
 
 if __name__ == "__main__":

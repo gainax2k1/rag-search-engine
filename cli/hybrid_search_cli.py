@@ -2,7 +2,7 @@ import argparse, time
 
 from lib.search_utils import DEFAULT_ALPHA, DEFAULT_WSEARCH_LIMIT, K_WEIGHT, load_movies
 from lib.hybrid_search import normalize_score, HybridSearch
-from lib.query_enhancement import enhance_query, individual_rerank, batch_rerank, cross_encoder_rerank
+from lib.query_enhancement import enhance_query, individual_rerank, batch_rerank, cross_encoder_rerank, evaluate_results
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
@@ -23,8 +23,8 @@ def main() -> None:
     rrf_search_parser.add_argument("--limit", nargs="?", type=int, default=DEFAULT_WSEARCH_LIMIT, help="Limit results of RRF search")
     rrf_search_parser.add_argument("--enhance",type=str, choices=["spell", "rewrite", "expand"],help="Query enhancement method", default=None)
     rrf_search_parser.add_argument("--rerank-method", type=str, choices=["individual", "batch", "cross_encoder", None], help="Method for reranking results, default is to use the combined RRF score", default=None)
-
-
+    rrf_search_parser.add_argument("--evaluate", action="store_true",  help="Use LLM to evaluate the relevance of the top results and provide a relevance score or rank instead of using the RRF score for final ranking ") 
+    
     args = parser.parse_args()
 
     match args.command:
@@ -38,7 +38,7 @@ def main() -> None:
 
         case "rrf-search":
             print("RRF score search...")
-            rrf_search_command(args.query, k=args.k, limit=args.limit, enhance=args.enhance, rerank_method=args.rerank_method)
+            rrf_search_command(args.query, k=args.k, limit=args.limit, enhance=args.enhance, rerank_method=args.rerank_method, evaluate=args.evaluate)
 
         case _:
             parser.print_help()
@@ -61,7 +61,8 @@ def weighted_search_command(query, alpha, limit):
         print(f"BM25: {result["bm25"]:.4f}, Semantic: {result["sem"]:.4f}")
         print(f"{result["doc"][:100]}\n")
 
-def rrf_search_command(query, k, limit, enhance, rerank_method):
+def rrf_search_command(query, k, limit, enhance, rerank_method, evaluate=True):
+    print(f"DEBUG: evaluate at start = {evaluate}")
     documents = load_movies()
     hyb_search = HybridSearch(documents)
 
@@ -132,5 +133,16 @@ def rrf_search_command(query, k, limit, enhance, rerank_method):
         print(f"   BM25 Rank: {result["bm25_rank"]}, Semantic Rank: {result["sem_rank"]}")
         print(f"   {result["doc"][:100]}\n")
 
+    print(f"DEBUG: evaluate is set to {evaluate}")
+
+    if evaluate is True:
+        print("Evaluating relevance of top results using LLM...")
+        llm_eval = evaluate_results(query, results)
+
+        for i, result in enumerate(results):
+            relevance_score = llm_eval[i]   
+
+            print(f"{i+1}. {result["title"]}: {relevance_score}/3")
+        
 if __name__ == "__main__":
     main()
