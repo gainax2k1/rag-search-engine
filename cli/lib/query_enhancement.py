@@ -102,7 +102,18 @@ PROMPTS = {
 
             [2, 0, 3, 2, 0, 1]
             """,
-}
+    "rag_evaluate": """You are a RAG agent for Hoopla, a movie streaming service.
+            Your task is to provide a natural-language answer to the user's query based on documents retrieved during search.
+            Provide a comprehensive answer that addresses the user's query.
+
+            Query: {query}
+
+            Documents:
+            {docs}
+
+            Answer:
+            """,
+    }
 
 
 def individual_rerank(query, title, doc):
@@ -160,6 +171,14 @@ def enhance_query(query: str, method    : str) -> str:
     
     cleaned = (response.text or "").strip()
     return cleaned if cleaned else query
+
+def rag_evaluate(query: str, results: list[dict]):
+    formatted_results = [f"{result['title']} - {result['doc'][:300]}" for result in results] # format results as "title - doc" and truncate doc to 300 chars to keep prompt size down
+    results_str = "\n".join(formatted_results)
+    prompt = PROMPTS["rag_evaluate"].format(query=query, docs=results_str)
+    response = _client.models.generate_content(model=MODEL, contents=prompt)  
+    return response.text.strip() if response.text else ""
+
 
 def evaluate_results(query: str, results: list[dict]) -> list[int]:
     formatted_results = [f"{result['title']} - {result['doc'][:300]}" for result in results] # format results as "title - doc" and truncate doc to 300 chars to keep prompt size down
