@@ -113,6 +113,39 @@ PROMPTS = {
 
             Answer:
             """,
+    "summarize":"""Provide information useful to the query below by synthesizing data from multiple search results in detail.
+            
+            The goal is to provide comprehensive information so that users know what their options are.
+            Your response should be information-dense and concise, with several key pieces of information about the genre, plot, etc. of each movie.
+
+            This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+
+            Query: {query}
+
+            Search results:
+            {results}
+
+            Provide a comprehensive 3–4 sentence answer that combines information from multiple sources:
+            """,
+    "citations":"""Answer the query below and give information based on the provided documents.
+
+            The answer should be tailored to users of Hoopla, a movie streaming service.
+            If not enough information is available to provide a good answer, say so, but give the best answer possible while citing the sources available.
+
+            Query: {query}
+
+            Documents:
+            {documents}
+
+            Instructions:
+            - Provide a comprehensive answer that addresses the query
+            - Cite sources in the format [1], [2], etc. when referencing information
+            - If sources disagree, mention the different viewpoints
+            - If the answer isn't in the provided documents, say "I don't have enough information"
+            - Be direct and informative
+
+            Answer:
+            """,
     }
 
 
@@ -193,6 +226,20 @@ def evaluate_results(query: str, results: list[dict]) -> list[int]:
     except json.JSONDecodeError:
         print(f"Warning: Could not parse JSON from model response: '{cleaned}'")
         return [0] * len(results) # return all 0s as fallback
+    
+def summarize_results(query: str, results: list[dict]):
+    formatted_results = [f"{result['title']} - {result['doc'][:300]}" for result in results] # format results as "title - doc" and truncate doc to 300 chars to keep prompt size down
+    results_str = "\n".join(formatted_results)
+    prompt = PROMPTS["summarize"].format(query=query, results=results_str)
+    response = _client.models.generate_content(model=MODEL, contents=prompt)  
+    return response.text.strip() if response.text else ""
+
+def generate_citations(query: str, documents: list[dict]):
+    formatted_docs = [f"{doc['title']} - {doc['doc'][:300]}" for doc in documents] # format docs as "title - doc" and truncate doc to 300 chars to keep prompt size down
+    docs_str = "\n".join(formatted_docs)
+    prompt = PROMPTS["citations"].format(query=query, documents=docs_str)
+    response = _client.models.generate_content(model=MODEL, contents=prompt)  
+    return response.text.strip() if response.text else ""
 
 
 if __name__ == "__main__":
