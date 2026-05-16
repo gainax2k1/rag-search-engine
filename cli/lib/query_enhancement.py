@@ -146,6 +146,21 @@ PROMPTS = {
 
             Answer:
             """,
+    "question":"""Answer the user's question based on the provided movies that are available on Hoopla, a streaming service.
+
+            Question: {question}
+
+            Documents:
+            {context}
+
+            Instructions:
+            - Answer questions directly and concisely
+            - Be casual and conversational
+            - Don't be cringe or hype-y
+            - Talk like a normal person would in a chat conversation
+
+            Answer:
+            """,
     }
 
 
@@ -238,6 +253,13 @@ def generate_citations(query: str, documents: list[dict]):
     formatted_docs = [f"{doc['title']} - {doc['doc'][:300]}" for doc in documents] # format docs as "title - doc" and truncate doc to 300 chars to keep prompt size down
     docs_str = "\n".join(formatted_docs)
     prompt = PROMPTS["citations"].format(query=query, documents=docs_str)
+    response = _client.models.generate_content(model=MODEL, contents=prompt)  
+    return response.text.strip() if response.text else ""
+
+def answer_question(question: str, context: list[dict]):
+    formatted_context = [f"{doc['title']} - {doc['doc'][:300]}" for doc in context] 
+    context_str = "\n".join(formatted_context)
+    prompt = PROMPTS["question"].format(question=question, context=context_str)
     response = _client.models.generate_content(model=MODEL, contents=prompt)  
     return response.text.strip() if response.text else ""
 
